@@ -14,11 +14,29 @@ namespace Bouvet.AdventOfCode
     public class PostToSlack
     {
         private static readonly string COOKIE = System.Environment.GetEnvironmentVariable("ADVCODE_COOKIE", EnvironmentVariableTarget.Process);
-        private static readonly string SLACK_HOOK_URL = System.Environment.GetEnvironmentVariable("SLACK_HOOK",  EnvironmentVariableTarget.Process);
+        private static readonly string SLACK_HOOK_URL = System.Environment.GetEnvironmentVariable("SLACK_HOOK", EnvironmentVariableTarget.Process);
         private static readonly string LEADERBOARD_URL = System.Environment.GetEnvironmentVariable("LEADERBOARD_URL", EnvironmentVariableTarget.Process);
+
+        private static readonly Dictionary<int, string> PARROTS = new Dictionary<int, string> {
+          {1, ":exceptionally_fast_parrot:"},
+          {2, ":ultra_fast_parrot:"},
+          {3, ":fast_parrot:"}
+        };
+
+
         [FunctionName("PostToSlack")]
         public async Task RunAsync([TimerTrigger("0 5 0 1-26 12 *")] TimerInfo myTimer, ILogger log)
         {
+            if (COOKIE == null || SLACK_HOOK_URL == null || LEADERBOARD_URL == null)
+            {
+                log.LogCritical("One or more of the required environment variables were empty!");
+                return;
+            }
+
+            var reportingForDay = DateTime.Now.Month == 12 && DateTime.Now.Day == 1
+                ? 1
+                : DateTime.Now.Day;
+
             var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, new Uri(LEADERBOARD_URL));
             httpRequestMessage.Headers.Add("Cookie", "session=" + COOKIE);
             log.LogInformation("C# Timer trigger function executed at: {0}", DateTime.Now);
@@ -43,12 +61,26 @@ namespace Bouvet.AdventOfCode
                     str3 = ":deal_with_it_parrot:";
                 stringBuilder.AppendLine(string.Format("    #{0}: {1} ({2}) {3}", (object)(index + 1), (object)(list[index].Name ?? "Anonym :techy_pingvin:"), (object)list[index].LocalScore, (object)str3));
             }
+
+            var lastDaysFastest = root.Members
+                .Where(q => q.Value.CompletionDayLevel.ContainsKey(reportingForDay))
+                .ToDictionary(q => q.Value.Name, q => q.Value.CompletionDayLevel[reportingForDay])
+                .Where(q => q.Value.Count == 2)
+                .ToDictionary(q => q.Key, q => q.Value[2])
+                .OrderBy(q => q.Value.StarTime)
+                .Take(3)
+                .Select((q, idx) => $"    #{idx + 1} {q.Key}, kl. {q.Value.StarTime.ToLocalTime().ToString("HH:mm:ss")} {PARROTS[idx + 1]}");
+
             stringBuilder.AppendLine("_Stjerneskudd betyr 5 stjerner, hver dag gir mulighet for 2 stjerner. Totalt kan man få 50 stjerner._");
-            StringContent stringContent = new StringContent(JsonConvert.SerializeObject((object)new SlackPostMessage()
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine("De tre raskeste i går var:");
+            stringBuilder.AppendLine(string.Join("\n", lastDaysFastest));
+
+            var stringContent = new StringContent(JsonConvert.SerializeObject((object)new SlackPostMessage()
             {
                 Text = stringBuilder.ToString()
             }));
-            HttpResponseMessage httpResponseMessage2 = await new HttpClient().PostAsync(SLACK_HOOK_URL, (HttpContent)stringContent);
+            var httpResponseMessage2 = await new HttpClient().PostAsync(SLACK_HOOK_URL, (HttpContent)stringContent);
         }
     }
     public class Root
@@ -81,10 +113,20 @@ namespace Bouvet.AdventOfCode
         public int LocalScore { get; set; }
 
         [JsonProperty("completion_day_level")]
-        public object CompletionDayLevel { get; set; }
+        public Dictionary<int, Dictionary<int, StarInfoDetails>> CompletionDayLevel { get; set; }
 
         [JsonProperty("stars")]
         public int Stars { get; set; }
+    }
+
+    public class StarInfoDetails
+    {
+        [JsonProperty("star_index")]
+        public int StarIndex { get; set; }
+        [JsonProperty("get_star_ts")]
+        public int StarTimestamp { get; set; }
+        [JsonIgnore]
+        public DateTimeOffset StarTime => DateTimeOffset.FromUnixTimeSeconds(StarTimestamp);
     }
 
     public class SlackPostMessage
