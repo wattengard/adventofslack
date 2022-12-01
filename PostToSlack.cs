@@ -15,11 +15,12 @@ namespace Bouvet.AdventOfCode
     {
         private static readonly string COOKIE = System.Environment.GetEnvironmentVariable("ADVCODE_COOKIE", EnvironmentVariableTarget.Process);
         private static readonly string SLACK_HOOK_URL = System.Environment.GetEnvironmentVariable("SLACK_HOOK",  EnvironmentVariableTarget.Process);
+        private static readonly string LEADERBOARD_URL = System.Environment.GetEnvironmentVariable("LEADERBOARD_URL", EnvironmentVariableTarget.Process);
         [FunctionName("PostToSlack")]
         public async Task RunAsync([TimerTrigger("0 5 0 1-26 12 *")] TimerInfo myTimer, ILogger log)
         {
-            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, new Uri("https://adventofcode.com/2021/leaderboard/private/view/220070.json"));
-            httpRequestMessage.Headers.Add("Cookie", "session=" + PostToSlack.COOKIE);
+            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, new Uri(LEADERBOARD_URL));
+            httpRequestMessage.Headers.Add("Cookie", "session=" + COOKIE);
             log.LogInformation("C# Timer trigger function executed at: {0}", DateTime.Now);
             var httpResponseMessage1 = await new HttpClient((HttpMessageHandler)new HttpClientHandler()
             {
@@ -47,7 +48,7 @@ namespace Bouvet.AdventOfCode
             {
                 Text = stringBuilder.ToString()
             }));
-            HttpResponseMessage httpResponseMessage2 = await new HttpClient().PostAsync(PostToSlack.SLACK_HOOK_URL, (HttpContent)stringContent);
+            HttpResponseMessage httpResponseMessage2 = await new HttpClient().PostAsync(SLACK_HOOK_URL, (HttpContent)stringContent);
         }
     }
     public class Root
