@@ -73,7 +73,7 @@ namespace Bouvet.AdventOfCode
 
             stringBuilder.AppendLine("_Stjerneskudd betyr 5 stjerner, hver dag gir mulighet for 2 stjerner. Totalt kan man få 50 stjerner._");
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine("De tre raskeste i går var:");
+            stringBuilder.AppendLine("De tre raskeste til to stjerner i går var:");
             stringBuilder.AppendLine(string.Join("\n", lastDaysFastest));
 
             var stringContent = new StringContent(JsonConvert.SerializeObject((object)new SlackPostMessage()
