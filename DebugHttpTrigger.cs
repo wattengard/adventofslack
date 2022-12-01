@@ -12,6 +12,9 @@ namespace Bouvet.AdventOfCode
 {
     public static class DebugHttpTrigger
     {
+        private static readonly string COOKIE = System.Environment.GetEnvironmentVariable("ADVCODE_COOKIE", EnvironmentVariableTarget.Process);
+        private static readonly string SLACK_HOOK_URL = System.Environment.GetEnvironmentVariable("SLACK_HOOK", EnvironmentVariableTarget.Process);
+
         [FunctionName("DebugHttpTrigger")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
@@ -25,9 +28,7 @@ namespace Bouvet.AdventOfCode
             dynamic data = JsonConvert.DeserializeObject(requestBody);
             name = name ?? data?.name;
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            var responseMessage = $"Cookie: {COOKIE}\nHOOK: {SLACK_HOOK_URL}";
 
             return new OkObjectResult(responseMessage);
         }
