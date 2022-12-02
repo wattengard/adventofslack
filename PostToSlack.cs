@@ -20,7 +20,9 @@ namespace Bouvet.AdventOfCode
         private static readonly Dictionary<int, string> PARROTS = new Dictionary<int, string> {
           {1, ":exceptionally_fast_parrot:"},
           {2, ":ultra_fast_parrot:"},
-          {3, ":fast_parrot:"}
+          {3, ":fast_parrot:"},
+          {4, ":parrot_party:"},
+          {5, ":bored_parrot:"}
         };
 
 
@@ -35,7 +37,7 @@ namespace Bouvet.AdventOfCode
 
             var reportingForDay = DateTime.Now.Month == 12 && DateTime.Now.Day == 1
                 ? 1
-                : DateTime.Now.Day;
+                : DateTime.Now.Day - 1;
 
             var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, new Uri(LEADERBOARD_URL));
             httpRequestMessage.Headers.Add("Cookie", "session=" + COOKIE);
@@ -68,12 +70,12 @@ namespace Bouvet.AdventOfCode
                 .Where(q => q.Value.Count == 2)
                 .ToDictionary(q => q.Key, q => q.Value[2])
                 .OrderBy(q => q.Value.StarTime)
-                .Take(3)
+                .Take(5)
                 .Select((q, idx) => $"    #{idx + 1} {q.Key}, kl. {q.Value.StarTime.ToLocalTime().ToString("HH:mm:ss")} {PARROTS[idx + 1]}");
 
             stringBuilder.AppendLine("_Stjerneskudd betyr 5 stjerner, hver dag gir mulighet for 2 stjerner. Totalt kan man få 50 stjerner._");
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine("De tre raskeste til to stjerner i går var:");
+            stringBuilder.AppendLine("De fem raskeste til to stjerner i går var:");
             stringBuilder.AppendLine(string.Join("\n", lastDaysFastest));
 
             var stringContent = new StringContent(JsonConvert.SerializeObject((object)new SlackPostMessage()
