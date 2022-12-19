@@ -27,7 +27,7 @@ namespace Bouvet.AdventOfCode
 
 
         [FunctionName("PostToSlack")]
-        public async Task RunAsync([TimerTrigger("0 5 0 1-26 12 *")] TimerInfo myTimer, ILogger log)
+        public async Task RunAsync([TimerTrigger("0 5 0 * 12,1 *")] TimerInfo myTimer, ILogger log)
         {
             if (COOKIE == null || SLACK_HOOK_URL == null || LEADERBOARD_URL == null)
             {
@@ -73,10 +73,20 @@ namespace Bouvet.AdventOfCode
                 .Take(5)
                 .Select((q, idx) => $"    #{idx + 1} {q.Key}, kl. {q.Value.StarTime.ToLocalTime().ToString("HH:mm:ss")} {PARROTS[idx + 1]}");
 
+            var moreThanOneStar = root.Members.Values.Count(q => q.Stars > 0);
+            var threeRandos = root.Members
+                                .Values.Where(q => q.Stars > 0 && !string.IsNullOrWhiteSpace(q.Name))
+                                .OrderBy(q => Guid.NewGuid())
+                                .Take(3)
+                                .Select(q => new { Name = q.Name, Stars = q.Stars })
+                                .ToList();
+
             stringBuilder.AppendLine("_Stjerneskudd betyr 5 stjerner, hver dag gir mulighet for 2 stjerner. Totalt kan man få 50 stjerner._");
             stringBuilder.AppendLine();
             stringBuilder.AppendLine("De fem raskeste til to stjerner i går var:");
             stringBuilder.AppendLine(string.Join("\n", lastDaysFastest));
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine($"Det er totalt {moreThanOneStar} deltagere med stjerner. Blant annet *{threeRandos[0].Name}* med {threeRandos[0].Stars} stjerner, *{threeRandos[1].Name}* med {threeRandos[1].Stars} stjerner og *{threeRandos[2].Name}* med {threeRandos[2].Stars} stjerner...");
 
             var stringContent = new StringContent(JsonConvert.SerializeObject((object)new SlackPostMessage()
             {
