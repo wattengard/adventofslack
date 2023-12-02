@@ -42,6 +42,7 @@ namespace Bouvet.AdventOfCode
             var leaderboardRequest = new HttpRequestMessage(HttpMethod.Get, new Uri(LEADERBOARD_URL));
             leaderboardRequest.Headers.Add("Cookie", "session=" + COOKIE);
             log.LogDebug("Session cookie set ({0})", COOKIE);
+            log.LogDebug("Requesting json at {0}", leaderboardRequest.RequestUri.ToString());
             log.LogInformation("C# Timer trigger function executed at: {0}", DateTime.Now);
             var leaderboardResponse = await new HttpClient(new HttpClientHandler()
             {
