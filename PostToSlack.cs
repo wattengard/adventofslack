@@ -39,32 +39,39 @@ namespace Bouvet.AdventOfCode
                 ? 1
                 : DateTime.Now.Day - 1;
 
-            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, new Uri(LEADERBOARD_URL));
-            httpRequestMessage.Headers.Add("Cookie", "session=" + COOKIE);
+            var leaderboardRequest = new HttpRequestMessage(HttpMethod.Get, new Uri(LEADERBOARD_URL));
+            leaderboardRequest.Headers.Add("Cookie", "session=" + COOKIE);
+            log.LogDebug("Session cookie set ({0})", COOKIE);
             log.LogInformation("C# Timer trigger function executed at: {0}", DateTime.Now);
-            var httpResponseMessage1 = await new HttpClient((HttpMessageHandler)new HttpClientHandler()
+            var leaderboardResponse = await new HttpClient(new HttpClientHandler()
             {
                 UseCookies = false
-            }).SendAsync(httpRequestMessage);
-            log.LogInformation("Got response: {0}", httpResponseMessage1.StatusCode);
-            var root = JsonConvert.DeserializeObject<Root>(await httpResponseMessage1.Content.ReadAsStringAsync());
-            string str1 = DateTime.Now.ToString("HH:mm");
-            var dateTime = DateTime.Now.AddDays(-1.0);
-            var stringBuilder = new StringBuilder();
-            string str2 = string.Format("God natt! :crescent_moon: Klokken er {0} og her er topp 10 listen etter {1}. desember!", (object)str1, (object)dateTime.Day);
-            stringBuilder.AppendLine(str2);
-            var list = root.Members.Values.OrderByDescending(q => q.LocalScore).Take<Member>(10).ToList<Member>();
+            }).SendAsync(leaderboardRequest);
+            log.LogInformation("Got response: {0}", leaderboardResponse.StatusCode);
+            var leaderboardJsonContent = await leaderboardResponse.Content.ReadAsStringAsync();
+            if (leaderboardJsonContent.StartsWith("<")) {
+                log.LogError("Leaderboard did not return JSON. Aborting.");
+                log.LogDebug(leaderboardJsonContent);
+                return;
+            }
+            var leaderboard = JsonConvert.DeserializeObject<Leaderboard>(leaderboardJsonContent);
+            string currentTime = DateTime.Now.ToString("HH:mm");
+            var yesterdaysDate = DateTime.Now.AddDays(-1.0);
+            var slackMessageBuilder = new StringBuilder();
+            string str2 = string.Format("God natt! :crescent_moon: Klokken er {0} og her er topp 10 listen etter {1}. desember!", currentTime, yesterdaysDate.Day);
+            slackMessageBuilder.AppendLine(str2);
+            var list = leaderboard.Members.Values.OrderByDescending(q => q.LocalScore).Take<Member>(10).ToList<Member>();
             for (int index = 0; index < list.Count; ++index)
             {
                 int count1 = list[index].Stars < 5 ? 0 : list[index].Stars / 5;
                 int count2 = list[index].Stars % 5;
-                string str3 = Enumerable.Range(0, count1).Aggregate<int, string>("", (Func<string, int, string>)((s, i) => s + ":stars:")) + Enumerable.Range(0, count2).Aggregate<int, string>("", (Func<string, int, string>)((s, i) => s + ":star:"));
+                string str3 = Enumerable.Range(0, count1).Aggregate("", (s, i) => s + ":stars:") + Enumerable.Range(0, count2).Aggregate<int, string>("", (s, i) => s + ":star:");
                 if (list[index].Stars == 50)
                     str3 = ":deal_with_it_parrot:";
-                stringBuilder.AppendLine(string.Format("    #{0}: {1} ({2}) {3}", (object)(index + 1), (object)(list[index].Name ?? "Anonym :techy_pingvin:"), (object)list[index].LocalScore, (object)str3));
+                slackMessageBuilder.AppendLine(string.Format("    #{0}: {1} ({2}) {3}", index + 1, list[index].Name ?? "Anonym :techy_pingvin:", list[index].LocalScore, str3));
             }
 
-            var lastDaysFastest = root.Members
+            var lastDaysFastest = leaderboard.Members
                 .Where(q => q.Value.CompletionDayLevel.ContainsKey(reportingForDay))
                 .ToDictionary(q => q.Value.Name, q => q.Value.CompletionDayLevel[reportingForDay])
                 .Where(q => q.Value.Count == 2)
@@ -73,29 +80,29 @@ namespace Bouvet.AdventOfCode
                 .Take(5)
                 .Select((q, idx) => $"    #{idx + 1} {q.Key}, kl. {q.Value.StarTime.ToLocalTime().ToString("HH:mm:ss")} {PARROTS[idx + 1]}");
 
-            var moreThanOneStar = root.Members.Values.Count(q => q.Stars > 0);
-            var threeRandos = root.Members
+            var moreThanOneStar = leaderboard.Members.Values.Count(q => q.Stars > 0);
+            var threeRandos = leaderboard.Members
                                 .Values.Where(q => q.Stars > 0 && !string.IsNullOrWhiteSpace(q.Name))
                                 .OrderBy(q => Guid.NewGuid())
                                 .Take(3)
                                 .Select(q => new { Name = q.Name, Stars = q.Stars })
                                 .ToList();
 
-            stringBuilder.AppendLine("_Stjerneskudd betyr 5 stjerner, hver dag gir mulighet for 2 stjerner. Totalt kan man få 50 stjerner._");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine("De fem raskeste til to stjerner i går var:");
-            stringBuilder.AppendLine(string.Join("\n", lastDaysFastest));
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine($"Det er totalt {moreThanOneStar} deltagere med stjerner. Blant annet *{threeRandos[0].Name}* med {threeRandos[0].Stars} stjerner, *{threeRandos[1].Name}* med {threeRandos[1].Stars} stjerner og *{threeRandos[2].Name}* med {threeRandos[2].Stars} stjerner...");
+            slackMessageBuilder.AppendLine("_Stjerneskudd betyr 5 stjerner, hver dag gir mulighet for 2 stjerner. Totalt kan man få 50 stjerner._");
+            slackMessageBuilder.AppendLine();
+            slackMessageBuilder.AppendLine("De fem raskeste til to stjerner i går var:");
+            slackMessageBuilder.AppendLine(string.Join("\n", lastDaysFastest));
+            slackMessageBuilder.AppendLine();
+            slackMessageBuilder.AppendLine($"Det er totalt {moreThanOneStar} deltagere med stjerner. Blant annet *{threeRandos[0].Name}* med {threeRandos[0].Stars} stjerner, *{threeRandos[1].Name}* med {threeRandos[1].Stars} stjerner og *{threeRandos[2].Name}* med {threeRandos[2].Stars} stjerner...");
 
-            var stringContent = new StringContent(JsonConvert.SerializeObject((object)new SlackPostMessage()
+            var stringContent = new StringContent(JsonConvert.SerializeObject(new SlackPostMessage()
             {
-                Text = stringBuilder.ToString()
+                Text = slackMessageBuilder.ToString()
             }));
-            var httpResponseMessage2 = await new HttpClient().PostAsync(SLACK_HOOK_URL, (HttpContent)stringContent);
+            var httpResponseMessage2 = await new HttpClient().PostAsync(SLACK_HOOK_URL, stringContent);
         }
     }
-    public class Root
+    public class Leaderboard
     {
         [JsonProperty("members")]
         public Dictionary<int, Member> Members { get; set; }
