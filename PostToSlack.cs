@@ -50,7 +50,8 @@ namespace Bouvet.AdventOfCode
             }).SendAsync(leaderboardRequest);
             log.LogInformation("Got response: {0}", leaderboardResponse.StatusCode);
             var leaderboardJsonContent = await leaderboardResponse.Content.ReadAsStringAsync();
-            if (leaderboardJsonContent.StartsWith("<")) {
+            if (leaderboardJsonContent.StartsWith("<"))
+            {
                 log.LogError("Leaderboard did not return JSON. Aborting.");
                 log.LogDebug(leaderboardJsonContent);
                 return;
@@ -74,7 +75,7 @@ namespace Bouvet.AdventOfCode
 
             var lastDaysFastest = leaderboard.Members
                 .Where(q => q.Value.CompletionDayLevel.ContainsKey(reportingForDay))
-                .ToDictionary(q => q.Value.Name, q => q.Value.CompletionDayLevel[reportingForDay])
+                .ToDictionary(q => q.Value.Name ?? "<null>", q => q.Value.CompletionDayLevel[reportingForDay])
                 .Where(q => q.Value.Count == 2)
                 .ToDictionary(q => q.Key, q => q.Value[2])
                 .OrderBy(q => q.Value.StarTime)
