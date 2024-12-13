@@ -74,8 +74,8 @@ namespace Bouvet.AdventOfCode
             }
 
             var lastDaysFastest = leaderboard.Members
-                .Where(q => q.Value.CompletionDayLevel.ContainsKey(reportingForDay))
-                .ToDictionary(q => q.Value.Name ?? "<null>", q => q.Value.CompletionDayLevel[reportingForDay])
+                .Where(q => q.Value.CompletionDayLevel.ContainsKey(reportingForDay) && !string.IsNullOrWhiteSpace(q.Value.Name))
+                .ToDictionary(q => q.Value.Name, q => q.Value.CompletionDayLevel[reportingForDay])
                 .Where(q => q.Value.Count == 2)
                 .ToDictionary(q => q.Key, q => q.Value[2])
                 .OrderBy(q => q.Value.StarTime)
